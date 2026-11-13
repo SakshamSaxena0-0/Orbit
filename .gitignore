@@ -1,0 +1,4 @@
+# built by build.ps1
+bin/
+*.pdb
+__pycache__/
