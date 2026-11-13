@@ -19,9 +19,17 @@ bars, rising like a sunrise around a dome that shows the time. Click one to open
 | **Stays out of the way** | Clicking outside the wheel closes it, and that click doesn't fall through to the window behind. |
 | **Smooth** | Drawn on the GPU and cached, so the animations run at your display's refresh rate. |
 
+## Download
+
+1. Download **`Orbit.exe`** from the [latest release](../../releases/latest). It's a single file; nothing to install.
+2. Put it anywhere you like (for example `Documents\Orbit`) and run it.
+
+Needs Windows 10 or 11. Orbit isn't signed, so Windows may show *"Windows protected your PC"* the first time:
+click **More info**, then **Run anyway**.
+
 ## Use it
 
-1. Build `bin\Orbit.exe` (see below) and run it. Orbit goes to the tray.
+1. Run `Orbit.exe`. It goes to the tray.
 2. Press **Ctrl+Alt+W**. The first time, the wheel is empty: right-click its centre and choose **Add apps…**
    to pick from your installed apps, or drop shortcuts onto the ring.
 3. Right-click the centre for **Edit wheel**, **Start with Windows**, **Open settings file** and **Quit Orbit**.
