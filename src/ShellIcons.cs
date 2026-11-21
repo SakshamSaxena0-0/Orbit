@@ -9,10 +9,6 @@ using System.Windows.Threading;
 
 namespace Orbit
 {
-    /// <summary>
-    /// Icons through the shell (IShellItemImageFactory), so .exe, .lnk, folders and
-    /// shell:AppsFolder Store apps all get the icon Explorer would show.
-    /// </summary>
     static class ShellIcons
     {
         [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -51,7 +47,6 @@ namespace Orbit
 
         const int SIIGBF_BIGGERSIZEOK = 0x1, SIIGBF_ICONONLY = 0x4;
 
-        /// <summary>The icon of a path at about <paramref name="px"/> pixels, or null. Frozen, so any thread may use it.</summary>
         public static BitmapSource Load(string path, int px)
         {
             if (string.IsNullOrWhiteSpace(path)) return null;
@@ -88,7 +83,7 @@ namespace Orbit
             var info = new BITMAPINFOHEADER();
             info.biSize = Marshal.SizeOf(typeof(BITMAPINFOHEADER));
             info.biWidth = w;
-            info.biHeight = -h; // top-down rows
+            info.biHeight = -h;
             info.biPlanes = 1;
             info.biBitCount = 32;
             var bits = new byte[w * h * 4];
@@ -96,8 +91,6 @@ namespace Orbit
             try { GetDIBits(dc, hbm, 0, (uint)h, bits, ref info, 0); }
             finally { ReleaseDC(IntPtr.Zero, dc); }
 
-            // The shell hands back premultiplied alpha for most icons but not all; a colour
-            // brighter than its alpha can't be premultiplied, so that decides the format.
             bool anyAlpha = false, straight = false;
             for (int i = 0; i < bits.Length; i += 4)
             {
@@ -115,11 +108,6 @@ namespace Orbit
         }
     }
 
-    /// <summary>
-    /// Loads icons on background STA threads and reports each one on the UI thread. Icons are
-    /// also kept on disk: Store app icons take the shell a while, and a fresh start of Orbit
-    /// shows the copy from last time at once while the shell's current one is fetched.
-    /// </summary>
     sealed class IconCache
     {
         const int Workers = 3;
@@ -130,7 +118,6 @@ namespace Orbit
         readonly string _folder = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Orbit", "icons");
 
-        /// <summary>An icon finished loading (UI thread).</summary>
         public event Action Loaded;
 
         public IconCache(Dispatcher ui)
@@ -144,7 +131,6 @@ namespace Orbit
             }
         }
 
-        /// <summary>The icon if it is known (null while loading or when there is none). UI thread.</summary>
         public ImageSource Get(string path, int px)
         {
             if (string.IsNullOrWhiteSpace(path)) return null;
@@ -160,7 +146,6 @@ namespace Orbit
             return img;
         }
 
-        /// <summary>Calls <paramref name="done"/> with the icon now if it is known, and again whenever it loads. UI thread.</summary>
         public void Request(string path, int px, Action<ImageSource> done)
         {
             ImageSource img = Get(path, px);
@@ -174,7 +159,6 @@ namespace Orbit
 
         readonly Dictionary<string, List<Action<ImageSource>>> _waiters = new Dictionary<string, List<Action<ImageSource>>>(StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>Forget the icons in memory (a path's icon may have changed).</summary>
         public void Clear()
         {
             _done.Clear();
@@ -191,7 +175,6 @@ namespace Orbit
                 if (img != null) ToDisk(key, img);
                 _ui.BeginInvoke(new Action(() =>
                 {
-                    // A failed refresh keeps the copy from disk.
                     if (img != null || !_done.ContainsKey(key)) _done[key] = img;
                     _pending.Remove(key);
                     List<Action<ImageSource>> waiting;

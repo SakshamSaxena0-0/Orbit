@@ -1,4 +1,3 @@
-# Builds bin\Orbit.exe with the C# compiler that ships with Windows (.NET Framework 4.8); no SDK needed.
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $fw = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319'
@@ -13,7 +12,6 @@ if (-not (Test-Path $ico)) {
     if ($LASTEXITCODE) { throw 'Icon generation failed' }
 }
 
-# A running Orbit locks the exe: ask it to quit first.
 $running = Get-Process Orbit -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe }
 if ($running) {
     & $exe --quit

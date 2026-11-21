@@ -11,12 +11,10 @@ namespace Orbit
         public string Path;
     }
 
-    /// <summary>The apps of the Start menu (desktop and Store apps), read from shell:AppsFolder.</summary>
     static class AppCatalog
     {
         public const string AppsFolder = "shell:AppsFolder\\";
 
-        /// <summary>Every launchable Start menu app, sorted by name. Call on an STA thread.</summary>
         public static List<CatalogItem> Enumerate()
         {
             var list = new List<CatalogItem>();
@@ -30,7 +28,6 @@ namespace Orbit
                     string name = item.Name;
                     string id = item.Path;
                     if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(id)) continue;
-                    // Web links and uninstallers sit in the Start menu too; neither belongs on a launcher.
                     if (id.StartsWith("http", StringComparison.OrdinalIgnoreCase)) continue;
                     if (name.StartsWith("Uninstall", StringComparison.OrdinalIgnoreCase)) continue;
                     if (!seen.Add(name + "|" + id)) continue;
@@ -45,7 +42,6 @@ namespace Orbit
             return list;
         }
 
-        /// <summary>A first wheel made of common apps that are installed here.</summary>
         public static List<AppEntry> Seed(int max)
         {
             string[][] wanted =
@@ -87,7 +83,6 @@ namespace Orbit
 
     static class AppNames
     {
-        /// <summary>A readable name for something dropped on the wheel or picked in a file dialog.</summary>
         public static string FromPath(string path)
         {
             if (string.IsNullOrWhiteSpace(path)) return "App";
@@ -111,7 +106,6 @@ namespace Orbit
                 if (Directory.Exists(full)) return System.IO.Path.GetFileName(full).Length > 0 ? System.IO.Path.GetFileName(full) : full;
                 if (full.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && File.Exists(full))
                 {
-                    // "Google Chrome" reads better than "chrome"; long descriptions ("Steam Client Bootstrapper") don't.
                     string desc = FileVersionInfo.GetVersionInfo(full).FileDescription;
                     if (!string.IsNullOrWhiteSpace(desc) && desc.Trim().Length <= 22) return desc.Trim();
                 }
@@ -128,7 +122,6 @@ namespace Orbit
         static readonly object Gate = new object();
         static readonly bool Tracing = Environment.GetEnvironmentVariable("ORBIT_TRACE") == "1";
 
-        /// <summary>ORBIT_TRACE=1 logs startup stages with the time since the process started.</summary>
         public static void Trace(string stage)
         {
             if (!Tracing) return;

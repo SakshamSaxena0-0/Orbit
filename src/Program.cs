@@ -6,11 +6,6 @@ using System.Windows.Threading;
 
 namespace Orbit
 {
-    /// <summary>
-    /// Orbit: a wheel of apps that pops up around the cursor. Every launch of Orbit.exe shows it;
-    /// the first one stays in the tray so later ones (and the hotkey) bring it up instantly.
-    /// Flags: --background (start in the tray only), --edit (open in edit mode), --quit.
-    /// </summary>
     static class Program
     {
         const string MutexName = @"Local\Orbit.Launcher";
@@ -18,7 +13,6 @@ namespace Orbit
         const string EditSignal = @"Local\Orbit.Launcher.Edit";
         const string QuitSignal = @"Local\Orbit.Launcher.Quit";
 
-        /// <summary>Started by an Orbit that restarted itself (see <see cref="Restart"/>): it doesn't do so again.</summary>
         public static bool Reopened { get; private set; }
 
         [STAThread]
@@ -31,13 +25,11 @@ namespace Orbit
             var mutex = new Mutex(true, MutexName, out first);
             if (!first && Reopened)
             {
-                // The Orbit that started this one is on its way out: take over when it has gone.
                 try { first = mutex.WaitOne(5000); }
                 catch (AbandonedMutexException) { first = true; }
             }
             if (!first)
             {
-                // Orbit already runs: hand it the request, and with it the right to take the foreground.
                 if (background) return 0;
                 Native.AllowSetForegroundWindow(Native.ASFW_ANY);
                 return Signal(quit ? QuitSignal : edit ? EditSignal : ShowSignal) ? 0 : 1;
@@ -48,9 +40,6 @@ namespace Orbit
             var editMode = new EventWaitHandle(false, EventResetMode.AutoReset, EditSignal);
             var stop = new EventWaitHandle(false, EventResetMode.AutoReset, QuitSignal);
 
-            // A cold start is mostly JIT and WPF's first window: multicore JIT replays the last
-            // start's methods on spare cores. Drawing stays on the graphics card: software drawing
-            // starts the first window sooner but can't keep animations smooth (ORBIT_SOFTWARE=1 forces it).
             try
             {
                 string profiles = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Orbit");
@@ -62,9 +51,6 @@ namespace Orbit
             if (Environment.GetEnvironmentVariable("ORBIT_SOFTWARE") == "1")
                 System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
             PreferScreenGpu();
-            // WPF animations (menus fading in, the folder panel unrolling) run at 60 frames a second
-            // unless asked for more: every one asks for 240, so only the display's refresh limits them.
-            // The wheel's own frames already come once per refresh (CompositionTarget.Rendering).
             try
             {
                 System.Windows.Media.Animation.Timeline.DesiredFrameRateProperty.OverrideMetadata(
@@ -95,13 +81,6 @@ namespace Orbit
 
         static string ExePath { get { return System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName; } }
 
-        /// <summary>
-        /// Draws on the graphics chip that drives the screen. On a laptop with two (here AMD and
-        /// NVIDIA) WPF otherwise drew Orbit on the NVIDIA one, and when that was switched off and
-        /// on (sleep, the charger) the wheel never reached the screen again until Orbit restarted.
-        /// This is Windows' own per-app choice (Settings > Display > Graphics: "Power saving"),
-        /// set only if nothing was chosen for Orbit there. It must come before WPF draws anything.
-        /// </summary>
         static void PreferScreenGpu()
         {
             try
@@ -112,7 +91,6 @@ namespace Orbit
             catch (Exception ex) { Log.Write("GPU preference: " + ex.Message); }
         }
 
-        /// <summary>Starts a fresh Orbit that shows the wheel, once this one has quit (see <paramref name="quit"/>).</summary>
         public static void Restart(Action quit)
         {
             Log.Write("restarting Orbit to bring the wheel back");
@@ -127,7 +105,6 @@ namespace Orbit
 
         static bool Signal(string name)
         {
-            // The first instance may still be creating its signals.
             for (int attempt = 0; attempt < 30; attempt++)
             {
                 EventWaitHandle handle;

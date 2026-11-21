@@ -12,7 +12,6 @@ using System.Windows.Media.Effects;
 
 namespace Orbit
 {
-    /// <summary>A borderless rounded panel in the wheel's dark glass; drag it by its background.</summary>
     class GlassWindow : Window
     {
         protected readonly Border Panel;
@@ -66,7 +65,6 @@ namespace Orbit
         }
     }
 
-    /// <summary>One line of text, e.g. a new name for a slice.</summary>
     sealed class PromptWindow : GlassWindow
     {
         readonly TextBox _box;
@@ -128,7 +126,6 @@ namespace Orbit
         }
     }
 
-    /// <summary>Every Start menu app with its icon, searchable; double-click puts one on the wheel.</summary>
     sealed class PickerWindow : GlassWindow
     {
         const string OnWheel = "On the wheel";
@@ -262,7 +259,6 @@ namespace Orbit
             _note.Text = dialog.FileNames.Length == 1 ? "Added " + AppNames.FromPath(dialog.FileNames[0]) + "." : "Added " + dialog.FileNames.Length + " files.";
         }
 
-        /// <summary>The Start menu is read on a background STA thread; icons come from the shared cache.</summary>
         void StartLoading()
         {
             var ui = Dispatcher;

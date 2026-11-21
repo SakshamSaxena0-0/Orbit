@@ -8,34 +8,18 @@ using System.Windows.Media;
 
 namespace Orbit
 {
-    /// <summary>
-    /// The see-through, topmost window that holds the wheel. It stays alive between uses and is
-    /// only hidden, so it can come back instantly; the wheel (<see cref="View"/>) can be moved
-    /// to a new window when this one stops reaching the screen.
-    /// </summary>
     sealed class WheelWindow : Window
     {
         public readonly DonutView View;
-        /// <summary>See-through, but it takes the pointer: a click on it is a click outside the wheel.</summary>
         readonly Canvas _stage = new Canvas();
 
-        /// <summary>A click landed outside the wheel, on the rest of the screen the window covers.</summary>
         public event Action OutsideClicked;
 
-        /// <param name="layered">
-        /// A plain window the desktop compositor blends by its alpha is the fast kind: a layered
-        /// window is copied off the graphics card every frame, which held opening and closing to
-        /// ~85 fps on a 144 Hz display. But only the layered kind kept drawing every time the
-        /// laptop woke from sleep, so it is the fallback (and ORBIT_LAYERED=1 forces it).
-        /// </param>
         public WheelWindow(DonutView view, bool layered)
         {
             View = view;
             Title = "Orbit";
             WindowStyle = WindowStyle.None;
-            // The plain window takes clicks in all of its rectangle, so the wheel decides what a
-            // click outside its slices means (it closes). A layered window lets clicks through
-            // where it is fully clear, so its stage is all but clear instead: 1/255 opaque.
             UsesDwm = !layered && Environment.GetEnvironmentVariable("ORBIT_LAYERED") != "1";
             AllowsTransparency = !UsesDwm;
             _stage.Background = UsesDwm ? Brushes.Transparent : NearlyClear;
@@ -49,7 +33,7 @@ namespace Orbit
             _stage.MouseDown += (s, e) =>
             {
                 if (e.OriginalSource != _stage) return;
-                e.Handled = true; // the app below never sees it
+                e.Handled = true;
                 if (OutsideClicked != null) OutsideClicked();
             };
             Content = _stage;
@@ -65,7 +49,6 @@ namespace Orbit
 
         static readonly Brush NearlyClear = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
 
-        /// <summary>Gives up the wheel, for the window that takes it over; this one is then closed for good.</summary>
         public void Release()
         {
             _check.Stop();
@@ -75,7 +58,6 @@ namespace Orbit
 
         public IntPtr Handle { get { return new WindowInteropHelper(this).EnsureHandle(); } }
 
-        /// <summary>Device pixels per DIP for this window.</summary>
         public double DeviceScale
         {
             get
@@ -86,7 +68,6 @@ namespace Orbit
             }
         }
 
-        /// <summary>Covers <paramref name="area"/> and puts the wheel's corner at <paramref name="wheel"/> (both on the screen, in DIPs).</summary>
         public void Arrange(Rect area, Point wheel)
         {
             Left = area.Left;
@@ -97,17 +78,6 @@ namespace Orbit
             Canvas.SetTop(View, wheel.Y - area.Top);
         }
 
-        // ----- making sure the wheel reaches the screen ----------------------------------------
-        //
-        // After the laptop woke from sleep, the plain (compositor-blended) window sometimes never
-        // reached the screen again: invisible, but taking clicks. WPF went on drawing it (in
-        // software too, resized too), while new windows of the same Orbit drew fine. So the screen
-        // under the hub is read as the wheel shows and again once it has opened: if nothing there
-        // changed, the wheel isn't on screen and <see cref="Broken"/> has the host move it to a new
-        // window. A read takes ~7 ms, so it runs off the UI thread: neither the opening nor an
-        // open wheel waits for it. It all goes to the log.
-
-        /// <summary>The wheel was shown but didn't reach the screen.</summary>
         public event Action Broken;
 
         volatile int[] _under;
@@ -115,10 +85,6 @@ namespace Orbit
         DateTime _shown;
         readonly System.Windows.Threading.DispatcherTimer _check = new System.Windows.Threading.DispatcherTimer();
 
-        /// <summary>
-        /// Reads the screen where the hub goes as the wheel shows (the wheel starts see-through, so
-        /// the read sees what is under it); the check follows once it is open.
-        /// </summary>
         public void BeforeShow()
         {
             _check.Stop();
@@ -133,7 +99,6 @@ namespace Orbit
             });
         }
 
-        /// <summary>Checks that the wheel came up on screen once it has had time to open.</summary>
         public void AfterShow()
         {
             if (_check.Tag == null)
@@ -142,7 +107,7 @@ namespace Orbit
                 _check.Tick += delegate { _check.Stop(); CheckShown(); };
             }
             _shown = DateTime.UtcNow;
-            _check.Interval = TimeSpan.FromMilliseconds(300); // the hub is whole 0.12 s into the opening
+            _check.Interval = TimeSpan.FromMilliseconds(300);
             _check.Start();
         }
 
@@ -152,7 +117,6 @@ namespace Orbit
             if (under == null || !IsVisible || View.IsClosing) return;
             if (View.FramesSinceOpen < 12 && DateTime.UtcNow - _shown < TimeSpan.FromSeconds(2))
             {
-                // Orbit is busy (just started, say) and the opening hasn't run yet: wait for it.
                 _check.Interval = TimeSpan.FromMilliseconds(120);
                 _check.Start();
                 return;
@@ -180,10 +144,8 @@ namespace Orbit
             if (Broken != null) Broken();
         }
 
-        /// <summary>What the host did to bring the wheel back, for the log line of the next check.</summary>
         public string Repaired;
 
-        /// <summary>The hub's probe in screen pixels, from where the window and the wheel are put (no layout needed).</summary>
         Native.RECT HubOnScreen()
         {
             Rect r = View.HubProbe;
@@ -202,7 +164,6 @@ namespace Orbit
             return true;
         }
 
-        /// <summary>WPF's own idea of whether it draws this window, for the log.</summary>
         string RenderState()
         {
             try
@@ -230,7 +191,6 @@ namespace Orbit
 
         protected override void OnClosing(CancelEventArgs e)
         {
-            // The window is reused: closing it (Alt+F4, the system) only dismisses the wheel.
             if (!AllowClose)
             {
                 e.Cancel = true;

@@ -11,28 +11,16 @@ using System.Windows.Media.Animation;
 
 namespace Orbit
 {
-    /// <summary>
-    /// The panel a middle-click unfolds from a folder spoke (File Explorer, or an entry that is a
-    /// folder): the folder itself, then its folders. A click opens one in Explorer. It is a
-    /// popup, so the wheel keeps the focus and stays up while it is open.
-    /// </summary>
     sealed class FolderFlyout
     {
         const double PanelWidth = 264, MaxListHeight = 400;
         readonly Popup _popup;
-        /// <summary>
-        /// The popup's own child stays untransformed: a popup is placed by its child's transformed
-        /// bounds, so a child that grows in would land off the spoke. The panel inside it grows.
-        /// No blurred shadow either, for the same reason.
-        /// </summary>
         readonly Grid _frame = new Grid();
         readonly Border _panel;
         readonly ListBox _list;
         readonly IconCache _icons;
 
-        /// <summary>A folder was picked: its path.</summary>
         public event Action<string> FolderChosen;
-        /// <summary>The panel closed, picked or not.</summary>
         public event Action Closed;
 
         public FolderFlyout(UIElement target, IconCache icons)
@@ -77,10 +65,6 @@ namespace Orbit
 
         public bool IsOpen { get { return _popup.IsOpen; } }
 
-        /// <summary>
-        /// Unfolds the panel for <paramref name="root"/> beyond <paramref name="tip"/> (the spoke's
-        /// end, in the wheel's coordinates), in the spoke's <paramref name="direction"/>.
-        /// </summary>
         public void Show(string root, Point tip, Vector direction)
         {
             _list.ItemsSource = Items(root);
@@ -89,7 +73,6 @@ namespace Orbit
             double w = PanelWidth, h = _panel.DesiredSize.Height;
             Point a = tip + direction * 6;
 
-            // Out past the spoke's end: to its side when it points sideways, above it when it points up.
             double x, y, originX = 0.5;
             if (direction.X < -0.35) { x = a.X - w; y = a.Y - h / 2; originX = 1; }
             else if (direction.X > 0.35) { x = a.X; y = a.Y - h / 2; originX = 0; }
@@ -103,16 +86,12 @@ namespace Orbit
             _popup.VerticalOffset = screen.Y;
 
             _scrollPos = _scrollTarget = 0;
-            if (Scroller() != null) _scroller.ScrollToTop(); // a new list starts at its top
+            if (Scroller() != null) _scroller.ScrollToTop();
             _popup.IsOpen = true;
             Unroll(originX, w, h);
             _list.Focus();
         }
 
-        /// <summary>
-        /// The panel unrolls out of the spoke (a rounded clip opening away from it) and its rows
-        /// slide in one after another.
-        /// </summary>
         void Unroll(double originX, double w, double h)
         {
             var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
@@ -141,8 +120,6 @@ namespace Orbit
             }));
         }
 
-        // ----- smooth wheel scrolling: the list glides to where the wheel sends it -----
-
         ScrollViewer _scroller;
         double _scrollPos, _scrollTarget, _scrollLast;
         bool _scrolling;
@@ -156,7 +133,7 @@ namespace Orbit
                 _scroller = d as ScrollViewer;
                 if (_scroller != null)
                 {
-                    _scroller.CanContentScroll = false; // pixels, not whole rows
+                    _scroller.CanContentScroll = false;
                     break;
                 }
             }
@@ -195,7 +172,6 @@ namespace Orbit
             _popup.IsOpen = false;
         }
 
-        /// <summary>The folder itself first (a drive by its label), then its folders as Explorer shows them.</summary>
         List<PickerItem> Items(string root)
         {
             var items = new List<PickerItem>();

@@ -7,15 +7,12 @@ using System.Text;
 
 namespace Orbit
 {
-    /// <summary>One slice of the wheel: something the shell can open.</summary>
     [DataContract]
     sealed class AppEntry
     {
         [DataMember(Name = "name", Order = 0)] public string Name;
-        /// <summary>An .exe, .lnk, folder, URL, or "shell:AppsFolder\{app id}" for Start menu / Store apps.</summary>
         [DataMember(Name = "path", Order = 1)] public string Path;
         [DataMember(Name = "args", Order = 2, EmitDefaultValue = false)] public string Args;
-        /// <summary>Optional file whose icon is shown instead of the path's own.</summary>
         [DataMember(Name = "icon", Order = 3, EmitDefaultValue = false)] public string Icon;
         [DataMember(Name = "admin", Order = 4, EmitDefaultValue = false)] public bool Admin;
 
@@ -25,32 +22,21 @@ namespace Orbit
     [DataContract]
     sealed class Settings
     {
-        /// <summary>Global shortcut that opens the wheel at the cursor, e.g. "Ctrl+Alt+W".</summary>
         [DataMember(Name = "hotkey", Order = 0)] public string Hotkey;
-        /// <summary>"slim": a narrow spoke per app; "wedge": slices that fill the ring.</summary>
         [DataMember(Name = "style", Order = 1)] public string Style;
-        /// <summary>"fan": the apps rise in a half circle over a dome with the time; "circle": all round it.</summary>
         [DataMember(Name = "layout", Order = 1)] public string Layout;
         [DataMember(Name = "outerRadius", Order = 2)] public double OuterRadius;
-        /// <summary>Hole size as a share of the outer radius.</summary>
         [DataMember(Name = "holeRatio", Order = 3)] public double HoleRatio;
-        /// <summary>Width of a slim spoke at its outer end.</summary>
         [DataMember(Name = "sliceWidth", Order = 4)] public double SliceWidth;
-        /// <summary>Slim style: every other spoke is this share of the full length (1 = all the same).</summary>
         [DataMember(Name = "shortRays", Order = 4)] public double ShortRays;
-        /// <summary>Slim style: a glass ring behind the spokes (off unless asked for).</summary>
         [DataMember(Name = "plate", Order = 4)] public bool? Plate;
-        /// <summary>How round the slices' corners are (pixels).</summary>
         [DataMember(Name = "roundness", Order = 4)] public double Roundness;
-        /// <summary>Wedge style: the gap between slices (pixels).</summary>
         [DataMember(Name = "gap", Order = 4)] public double Gap;
-        /// <summary>Slices per face; more apps go on further faces (Tab or the mouse wheel flips).</summary>
         [DataMember(Name = "perFace", Order = 5)] public int PerFace;
         [DataMember(Name = "accent", Order = 6)] public string Accent;
         [DataMember(Name = "apps", Order = 7)] public List<AppEntry> Apps;
         [DataMember(Name = "welcomed", Order = 8)] public bool Welcomed;
 
-        /// <summary>Fills in what an older or hand-edited file left out, and keeps values sane.</summary>
         public void Normalize()
         {
             if (string.IsNullOrWhiteSpace(Hotkey)) Hotkey = "Ctrl+Alt+W";
@@ -90,13 +76,11 @@ namespace Orbit
         }
     }
 
-    /// <summary>Loads and saves %APPDATA%\Orbit\settings.json; notices hand edits.</summary>
     sealed class ConfigStore
     {
         public readonly string Folder;
         public readonly string FilePath;
         public Settings Current;
-        /// <summary>Why the file couldn't be read last time (it is left untouched then), or null.</summary>
         public string LoadError;
         DateTime _seenWrite;
 
@@ -123,7 +107,6 @@ namespace Orbit
             }
             catch (Exception ex)
             {
-                // Keep the user's file as it is: a typo shouldn't wipe their wheel.
                 LoadError = ex.Message;
                 _seenWrite = File.GetLastWriteTimeUtc(FilePath);
                 if (Current == null) Current = Settings.CreateDefault();
@@ -132,7 +115,6 @@ namespace Orbit
             Current.Normalize();
         }
 
-        /// <summary>Reloads when the file changed since Orbit last read or wrote it.</summary>
         public bool ReloadIfChanged()
         {
             try

@@ -9,10 +9,8 @@ using Microsoft.Win32;
 
 namespace Orbit
 {
-    /// <summary>Opens wheel entries through the shell, the way a double-click in Explorer would.</summary>
     static class Launcher
     {
-        /// <summary>Starts an app on a background thread (ShellExecute can block); errors come back on the UI thread.</summary>
         public static void Start(AppEntry app, bool admin, Action<string> onError)
         {
             string path = Environment.ExpandEnvironmentVariables((app.Path ?? "").Trim());
@@ -49,7 +47,7 @@ namespace Orbit
             }
             catch (Win32Exception ex)
             {
-                if (ex.NativeErrorCode == 1223) return null; // UAC prompt declined
+                if (ex.NativeErrorCode == 1223) return null;
                 if (path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) && !elevate)
                 {
                     try
@@ -76,10 +74,6 @@ namespace Orbit
         [DllImport("shell32.dll")]
         static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)] Guid id, uint flags, IntPtr token, out IntPtr path);
 
-        /// <summary>
-        /// The file behind an entry, for "Open file location": a plain path, or a Start menu
-        /// desktop app whose id is a known-folder path ("{GUID}\Steam\Steam.exe"). Null for Store apps.
-        /// </summary>
         public static string FileFor(AppEntry app)
         {
             string path = Environment.ExpandEnvironmentVariables((app.Path ?? "").Trim());
@@ -114,7 +108,6 @@ namespace Orbit
         }
     }
 
-    /// <summary>"Start with Windows": a value under HKCU\...\Run that starts Orbit hidden in the tray.</summary>
     static class Startup
     {
         const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";

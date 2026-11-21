@@ -19,18 +19,9 @@ namespace Orbit
         public bool OnSlice { get { return Kind == HitKind.Slice || Kind == HitKind.Remove; } }
     }
 
-    /// <summary>
-    /// The wheel: app slices around a hub, drawn in clear glass. Built after Filee's DonutMenu:
-    /// constant-width gaps between rounded slices, an underdamped spring that pops the hovered
-    /// slice out, slices that unfold from the centre on open, faces turned like a dial with Tab
-    /// or the mouse wheel (one turn per turn of the wheel), and the hub as cancel. Frames run only while something
-    /// moves; an idle wheel costs nothing.
-    /// </summary>
     sealed class DonutView : FrameworkElement
     {
-        /// <summary>A slice was clicked (or chosen with Enter / a number key): global app index.</summary>
         public event Action<int> Invoked;
-        /// <summary>Right-click on a slice (global index), or on the hub / empty ring (-1).</summary>
         public event Action<int> ContextRequested;
         public event Action CenterInvoked;
         public event Action DismissRequested;
@@ -38,23 +29,18 @@ namespace Orbit
         public event Action<int, int> Reordered;
         public event Action<int> RemoveRequested;
         public event Action<int> RenameRequested;
-        /// <summary>Files or a link were dropped: (paths, global index to insert at).</summary>
         public event Action<string[], int> ItemsDropped;
-        /// <summary>The close animation finished; the window can hide.</summary>
         public event Action Closed;
-        /// <summary>A slice was middle-clicked (scroll-wheel click): global app index.</summary>
         public event Action<int> MiddleInvoked;
 
-        /// <summary>Space between the hub and the slices.</summary>
         public const double Gap = 6;
         public const double PopOut = 11, Rim = 30;
-        /// <summary>Fan layout: room below the dome's flat base.</summary>
         const double Base = 22;
-        const double Stiffness = 320, Damping = 21;          // underdamped: a small "boing"
+        const double Stiffness = 320, Damping = 21;
         const double OpenDur = 0.30, AppearDur = 0.26, Stagger = 0.02;
-        const double TurnDur = 0.50;                           // a slide change: the dial turns half round
-        const double CloseDur = 0.15, CloseSlice = 0.11, CloseStagger = 0.018; // closing sweeps left to right, like opening
-        const double WheelQuiet = 0.25;                       // one flip per turn of the wheel
+        const double TurnDur = 0.50;
+        const double CloseDur = 0.15, CloseSlice = 0.11, CloseStagger = 0.018;
+        const double WheelQuiet = 0.25;
         public const int IconPixels = 96;
 
         List<AppEntry> _apps = new List<AppEntry>();
@@ -64,7 +50,6 @@ namespace Orbit
         bool _editMode, _slim = true, _plate = true, _fan = true;
 
         int _face, _queued, _turnDir, _outFace;
-        /// <summary>While the dial turns: the face turning away, and how far each of its slices was popped out.</summary>
         SlotVisual[] _outgoing;
         readonly double[] _outPop = new double[16];
         int _hover = -1, _key = -1, _expanded = -1;
@@ -72,14 +57,12 @@ namespace Orbit
         DonutHit _press = new DonutHit(HitKind.Outside, -1);
         Point _pressPoint, _mouse;
         bool _dragging, _externalDrag;
-        /// <summary>The dragged app (global index): it keeps its place while faces flip under it.</summary>
         int _dragFrom = -1, _dropSlot = -1;
 
         readonly Stopwatch _clock = Stopwatch.StartNew();
         double _last, _openStart = -10, _appearStart = -10, _turnStart = -1, _closeStart = -1, _lastWheel = -10;
         bool _closing, _closeDone, _looping, _drawn;
         readonly double[] _pop = new double[16], _popV = new double[16];
-        /// <summary>How lit the hub is, on the same spring as the slices.</summary>
         double _hubPop, _hubPopV;
 
         Geometry[] _wedges = new Geometry[0];
@@ -95,9 +78,7 @@ namespace Orbit
         static readonly Brush Soft = Frozen(new SolidColorBrush(Color.FromArgb(0xB8, 255, 255, 255)));
         static readonly Brush Faint = Frozen(new SolidColorBrush(Color.FromArgb(0x5C, 255, 255, 255)));
         static readonly Brush TextShadow = Frozen(new SolidColorBrush(Color.FromArgb(0x8C, 0, 0, 0)));
-        /// <summary>Practically invisible, but not see-through: the gaps between spokes still catch the pointer.</summary>
         static readonly Brush HitFill = Frozen(new SolidColorBrush(Color.FromArgb(0x01, 0, 0, 0)));
-        /// <summary>How far round a slice the pointer still counts as on it (half of this each side).</summary>
         static readonly Pen HitMargin = Frozen(new Pen(Brushes.Black, 12));
 
         public DonutView()
@@ -116,14 +97,12 @@ namespace Orbit
 
         public double ViewWidth { get { return 2 * (_outer + PopOut + Rim); } }
         public double ViewHeight { get { return _fan ? _outer + PopOut + Rim + Base : ViewWidth; } }
-        /// <summary>The hub's centre: the point that goes under the cursor.</summary>
         public Point Anchor { get { return Center; } }
         public bool IsClosing { get { return _closing; } }
         public int Faces { get { return Math.Max(1, (_apps.Count + _perFace - 1) / _perFace); } }
         int SlotCount { get { return Math.Max(0, Math.Min(_perFace, _apps.Count - _face * _perFace)); } }
         int Active { get { return _key >= 0 ? _key : _hover; } }
         Point Center { get { return new Point(ViewWidth / 2, _outer + PopOut + Rim); } }
-        /// <summary>The angle the slices share: a half circle above the hub (fan) or all of it.</summary>
         double SpanAngle { get { return _fan ? Math.PI : 2 * Math.PI; } }
         double SlotAngle(int n) { return SpanAngle / Math.Max(1, n); }
         int Global(int slot) { return _face * _perFace + slot; }
@@ -135,7 +114,6 @@ namespace Orbit
             set { _editMode = value; Animate(); }
         }
 
-        /// <summary>Takes the wheel's shape and look from the settings.</summary>
         public void Configure(Settings s, IconCache icons)
         {
             _outer = s.OuterRadius;
@@ -179,7 +157,6 @@ namespace Orbit
             Track(HitTest(_mouse));
         }
 
-        /// <summary>"Pop out from the centre": front face, nothing lit.</summary>
         public void PlayOpen()
         {
             _closing = _closeDone = false;
@@ -201,7 +178,6 @@ namespace Orbit
 
         readonly DispatcherTimer _minute = new DispatcherTimer(DispatcherPriority.Background);
 
-        /// <summary>Keeps the time tile right while the wheel stays open: it is drawn again as each minute turns.</summary>
         void TickClock()
         {
             if (_minute.Tag == null)
@@ -214,7 +190,6 @@ namespace Orbit
             _minute.Start();
         }
 
-        /// <summary>Keeps a slice lit while something unfolds from it (its folders); -1 for none.</summary>
         public void SetExpanded(int globalIndex)
         {
             int slot = globalIndex - _face * _perFace;
@@ -222,7 +197,6 @@ namespace Orbit
             Animate();
         }
 
-        /// <summary>Where a slice ends, popped out, in this control's coordinates, and which way it points.</summary>
         public Point TipOf(int globalIndex, out Vector direction)
         {
             int n = SlotCount, slot = globalIndex - _face * _perFace;
@@ -231,11 +205,9 @@ namespace Orbit
             return Center + direction * (OuterOf(slot, n) + PopOut);
         }
 
-        /// <summary>Frames drawn since the wheel last opened: whether the opening has had a chance to show.</summary>
         public int FramesSinceOpen { get { return _openFrames; } }
         int _openFrames;
 
-        /// <summary>Part of the hub, in this control's coordinates: always covered by the wheel once it is open.</summary>
         public Rect HubProbe
         {
             get
@@ -246,7 +218,6 @@ namespace Orbit
             }
         }
 
-        /// <summary>Shrinks the wheel back into the centre, then raises <see cref="Closed"/>.</summary>
         public void PlayClose()
         {
             if (_closing || _closeDone) return;
@@ -257,19 +228,12 @@ namespace Orbit
             Animate();
         }
 
-        /// <summary>
-        /// Shows the next (+1) or previous (-1) face by turning the wheel like a dial. The faces
-        /// sit one after another round it, the hidden ones under the horizon: going on, the next
-        /// face comes up from under the right horizon while the old one sinks under the left
-        /// (the other way going back), and the dial settles into place with a small overshoot.
-        /// A slice being dragged comes along, so it can be dropped on another face.
-        /// </summary>
         public bool Flip(int direction)
         {
             if (Faces < 2 || _closing) return false;
             _dropSlot = -1;
             if (_turnStart >= 0)
-                _queued = Math.Max(-3, Math.Min(3, _queued + direction)); // turned once this turn ends
+                _queued = Math.Max(-3, Math.Min(3, _queued + direction));
             else StartTurn(direction);
             Animate();
             return true;
@@ -285,11 +249,10 @@ namespace Orbit
             _face = Mod(_face + direction, Faces);
             _turnDir = direction;
             _turnStart = Now();
-            _appearStart = -10; // the new face turns in whole; it doesn't unfold
+            _appearStart = -10;
             _key = _hover = -1;
-            // Fan: what turns under the horizon is out of sight (the overshoot may dip a few pixels under).
             if (_fan) _slotLayer.Clip = new RectangleGeometry(new Rect(-ViewWidth, -ViewHeight, 3 * ViewWidth, ViewHeight + Center.Y + 4));
-            Rebuild(); // the outgoing face stays in the layer (RenderAll)
+            Rebuild();
         }
 
         void EndTurn()
@@ -304,11 +267,6 @@ namespace Orbit
 
         bool Turning { get { return _turnStart >= 0; } }
 
-        /// <summary>
-        /// How far the dial has turned, 0 to 1 and a little past it as it settles: a knob let go
-        /// into its detent, an underdamped spring from rest (speeds up, ~3% overshoot, settles).
-        /// The last sliver of settling is taken up so it ends exactly in place.
-        /// </summary>
         double TurnProgress(double now)
         {
             if (!Turning) return 1;
@@ -323,17 +281,12 @@ namespace Orbit
             return 1 - Math.Exp(-zeta * w * t) * (Math.Cos(damped * t) + zeta / Math.Sqrt(1 - zeta * zeta) * Math.Sin(damped * t));
         }
 
-        /// <summary>How far a face is turned (radians, + clockwise): the fan turns half round, a full wheel a quarter and cross-fades.</summary>
         double TurnAngle(double progress, bool outgoing)
         {
             double span = _fan ? Math.PI : Math.PI / 2;
             return outgoing ? -_turnDir * progress * span : _turnDir * (1 - progress) * span;
         }
 
-        /// <summary>
-        /// How much of a spoke pointing at <paramref name="angle"/> shows: in the fan it fades out as
-        /// it sinks under the horizon (whole at its resting height, whatever the overshoot).
-        /// </summary>
         double HorizonFade(double angle, int n)
         {
             if (!_fan) return 1;
@@ -344,15 +297,12 @@ namespace Orbit
             return f * f * (3 - 2 * f);
         }
 
-        /// <summary>Where a dragged slice would land under <paramref name="p"/>; nowhere while the dial turns.</summary>
         void DragTo(Point p)
         {
             DonutHit h = HitTest(p);
             _dropSlot = h.OnSlice && !Turning ? h.Slot : -1;
             _hover = -1;
         }
-
-        // ----- layout -------------------------------------------------------------------
 
         void BuildBrushes()
         {
@@ -361,7 +311,6 @@ namespace Orbit
             var shadow = new RadialGradientBrush();
             if (_slim)
             {
-                // Spokes leave the background showing between them: a dim that fades out towards their tips.
                 shadow.GradientStops.Add(new GradientStop(Color.FromArgb(0x48, 0, 0, 0), 0));
                 shadow.GradientStops.Add(new GradientStop(Color.FromArgb(0x38, 0, 0, 0), 0.45));
                 shadow.GradientStops.Add(new GradientStop(Color.FromArgb(0x1A, 0, 0, 0), 0.8));
@@ -376,8 +325,6 @@ namespace Orbit
             }
             _shadow = Frozen(shadow);
 
-            // Slim spokes have less of the dim behind them, so their glass is a little deeper; on a
-            // plate they are the lighter glass instead, raised above the darker ring.
             byte baseAlpha = (byte)(!_slim ? 0x5E : _plate ? 0x48 : 0x7C);
             _base = Frozen(new SolidColorBrush(Color.FromArgb(baseAlpha, 0x0E, 0x11, 0x17)));
             _lift = _slim && _plate ? Frozen(new SolidColorBrush(Color.FromArgb(0x16, 255, 255, 255))) : null;
@@ -391,8 +338,6 @@ namespace Orbit
             sheen.GradientStops.Add(new GradientStop(Color.FromArgb(0x16, 255, 255, 255), 1));
             _sheen = Frozen(sheen);
 
-            // Buttons have no border; hovered, they fill with warm light (Glow). An icon's lettered
-            // stand-in tile keeps its plain glass edge: it isn't a button.
             _tileRim = Frozen(new Pen(RimBrush(c, R, 0xE0, 0x50, 0x16, 0x2A, 0x9C), 1.1));
             _accentPen = Frozen(new Pen(Frozen(new SolidColorBrush(_accent)), 2.2));
             var dash = new Pen(Frozen(new SolidColorBrush(Color.FromArgb(0x9C, _accent.R, _accent.G, _accent.B))), 1.4);
@@ -432,26 +377,17 @@ namespace Orbit
             RenderAll();
         }
 
-        /// <summary>
-        /// Where slim spoke i ends: every other spoke is shorter, like long and short sun rays
-        /// (the first, at the left horizon, is a short one). A lone spoke is always long.
-        /// </summary>
         double OuterOf(int i, int n)
         {
             if (!_slim || n < 2 || i % 2 == 1) return _outer;
             return _inner + (_outer - _inner) * _shortRays;
         }
 
-        /// <summary>The direction of slice i: from left to right over the hub (fan), or clockwise from the top.</summary>
         double SliceMid(int i, int n)
         {
             return _fan ? -Math.PI + (i + 0.5) * SlotAngle(n) : -Math.PI / 2 + i * SlotAngle(n);
         }
 
-        /// <summary>
-        /// Width of a slim spoke at its hub end and its outer end: the outer end is the setting,
-        /// the hub end a little narrower, and both shrink when many spokes would touch.
-        /// </summary>
         void BladeWidths(int n, out double wIn, out double wOut)
         {
             double s = n > 1 || _fan ? Math.Sin(SlotAngle(n) / 2) : 1;
@@ -478,10 +414,6 @@ namespace Orbit
             return Math.Max(36, Math.Min(_outer - _inner, chord * 0.92));
         }
 
-        /// <summary>
-        /// The size a slice's name is drawn at: 11.5, or smaller (down to 10) when the name is
-        /// wider than the slice, before it gets cut with an ellipsis (as Filee's LabelSize does).
-        /// </summary>
         double LabelSize(string name, double maxWidth)
         {
             string key = name + "\u0001" + maxWidth;
@@ -499,7 +431,6 @@ namespace Orbit
             return size;
         }
 
-        /// <summary>Where a slice's icon sits: at the tip of a slim spoke, or above the label in a wedge.</summary>
         Point IconCenter(int i, int n)
         {
             if (_slim)
@@ -521,10 +452,6 @@ namespace Orbit
             return new Vector(Math.Cos(mid) * amount, Math.Sin(mid) * amount);
         }
 
-        /// <summary>
-        /// How far (degrees) a slim spoke's icon and name are turned to lie along it: its own
-        /// direction, flipped on the left half so neither is ever upside down. 0 for wedges.
-        /// </summary>
         double SpokeAngle(int i, int n)
         {
             if (!_slim) return 0;
@@ -532,7 +459,6 @@ namespace Orbit
             return Math.Cos(mid) < -1e-3 ? degrees + 180 : degrees;
         }
 
-        /// <summary>The edit mode's remove badge: on the icon's top-left corner (turned with the icon), clear of the label.</summary>
         Point BadgeCenter(int i, int n)
         {
             double reach = IconSize(n) * 0.46;
@@ -540,8 +466,6 @@ namespace Orbit
             turn.Rotate(SpokeAngle(i, n));
             return IconCenter(i, n) + turn.Transform(new Vector(-reach, -reach)) + PopVector(i, n);
         }
-
-        // ----- geometry -----------------------------------------------------------------
 
         static Point Polar(Point c, double radius, double angle)
         {
@@ -555,11 +479,6 @@ namespace Orbit
             return len < 1e-6 ? from : from + v * (distance / len);
         }
 
-        /// <summary>
-        /// A slim spoke along <paramref name="mid"/>: a long bar from the hole to the outer edge,
-        /// <paramref name="wIn"/> wide at the hub end and <paramref name="wOut"/> at the tip, with
-        /// its corners only slightly rounded (by <paramref name="radius"/>).
-        /// </summary>
         static Geometry Blade(Point c, double ri, double ro, double mid, double wIn, double wOut, double radius)
         {
             var u = new Vector(Math.Cos(mid), Math.Sin(mid));
@@ -592,17 +511,15 @@ namespace Orbit
             return Frozen(geo);
         }
 
-        /// <summary>The part of a shape above the hub's centre line (the fan's horizon).</summary>
         Geometry UpperHalf(Geometry g)
         {
             var above = new RectangleGeometry(new Rect(0, 0, ViewWidth, Center.Y));
             return Frozen(Geometry.Combine(g, above, GeometryCombineMode.Intersect, null));
         }
 
-        /// <summary>A half disc standing on the horizon, the corners where its arc meets the base rounded by <paramref name="k"/>.</summary>
         static Geometry Dome(Point c, double r, double k)
         {
-            double turn = k / r; // how far up the arc the rounding reaches
+            double turn = k / r;
             var geo = new StreamGeometry();
             using (var ctx = geo.Open())
             {
@@ -614,7 +531,6 @@ namespace Orbit
             return Frozen(geo);
         }
 
-        /// <summary>A half circle over the horizon, open at the bottom.</summary>
         static Geometry Arch(Point c, double r)
         {
             var geo = new StreamGeometry();
@@ -635,10 +551,6 @@ namespace Orbit
             return Frozen(g);
         }
 
-        /// <summary>
-        /// A slice with a constant-width gap to its neighbours (the edges are offset by half
-        /// the gap, not rotated, so the seam stays parallel) and rounded corners.
-        /// </summary>
         static Geometry Wedge(Point c, double ri, double ro, double mid, double half, double gap, double radius)
         {
             double g = gap / 2;
@@ -677,13 +589,11 @@ namespace Orbit
             return Frozen(geo);
         }
 
-        // ----- hit testing --------------------------------------------------------------
-
         public DonutHit HitTest(Point p)
         {
             Vector v = p - Center;
             double d = v.Length;
-            if (_fan && v.Y > Gap) return new DonutHit(HitKind.Outside, -1); // below the horizon
+            if (_fan && v.Y > Gap) return new DonutHit(HitKind.Outside, -1);
             if (d < _inner - Gap / 2) return new DonutHit(HitKind.Center, -1);
             if (d > _outer + PopOut + 4) return new DonutHit(HitKind.Outside, -1);
             int n = SlotCount;
@@ -691,7 +601,6 @@ namespace Orbit
             double span = SlotAngle(n), a;
             if (_fan)
             {
-                // 0 along the left horizon, pi along the right one; just under it counts as the end slice.
                 a = Math.Atan2(v.Y, v.X) + Math.PI;
                 if (a > 1.5 * Math.PI) a -= 2 * Math.PI;
             }
@@ -702,15 +611,11 @@ namespace Orbit
             }
             int slot = Math.Max(0, Math.Min(n - 1, (int)Math.Floor(a / span)));
             if (_editMode && (p - BadgeCenter(slot, n)).Length <= 11) return new DonutHit(HitKind.Remove, slot);
-            // Only the slice itself (and a few pixels round it) is the slice: the space between
-            // and beyond the slices is outside, where a click closes the wheel.
             Point local = p - PopVector(slot, n);
             if (_wedges[slot].FillContains(local) || _wedges[slot].StrokeContains(HitMargin, local))
                 return new DonutHit(HitKind.Slice, slot);
             return new DonutHit(HitKind.Outside, -1);
         }
-
-        // ----- animation ----------------------------------------------------------------
 
         void Animate()
         {
@@ -718,8 +623,6 @@ namespace Orbit
             ApplyMotion(Now());
             if (_looping && Now() - _last > 0.25)
             {
-                // Frames had stopped coming (Windows can stop them round sleep or a hidden window):
-                // without them the wheel would stay invisible, so the loop starts over.
                 Log.Write("wheel: frames had stopped for " + (int)((Now() - _last) * 1000) + " ms; restarting them");
                 CompositionTarget.Rendering -= OnFrame;
                 _looping = false;
@@ -753,7 +656,6 @@ namespace Orbit
                 _frames, span * 1000, _frames / span, _worstGap * 1000));
         }
 
-        /// <summary>Advances every animation by <paramref name="dt"/> seconds; true while more frames are needed.</summary>
         bool Step(double now, double dt)
         {
             bool more = false;
@@ -763,8 +665,6 @@ namespace Orbit
             {
                 if (now - _turnStart >= TurnDur)
                 {
-                    // The dial is in place: turn on if the wheel was turned again meanwhile, else
-                    // light what the pointer is on.
                     int queued = _queued;
                     EndTurn();
                     if (queued != 0 && !_closing)
@@ -798,20 +698,19 @@ namespace Orbit
                 if (now - _closeStart < CloseLength(n)) more = true;
                 else if (!_closeDone)
                 {
-                    _closeDone = true; // one more frame, drawn fully transparent, before the window hides
+                    _closeDone = true;
                     more = true;
                 }
                 else
                 {
                     _closing = false;
                     Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() => { if (Closed != null) Closed(); }));
-                    return false; // gone: nothing runs on behind the hidden window (opening starts afresh)
+                    return false;
                 }
             }
             return more;
         }
 
-        /// <summary>Moves <paramref name="x"/> towards <paramref name="target"/> on the pop spring; true while it is still moving.</summary>
         static bool Spring(ref double x, ref double v, double target, double dt)
         {
             for (double t = dt; t > 1e-6; t -= 1 / 240.0)
@@ -846,17 +745,14 @@ namespace Orbit
             opacity = EaseOut(Clamp01(a * 1.6));
             if (_closing || _closeDone)
             {
-                // Closing goes the way opening came: the slices fold away one after another, left to right.
                 double f = _closeDone ? 1 : Clamp01((now - _closeStart - i * CloseStagger) / CloseSlice);
                 scale *= 1 - 0.35 * f * f;
                 opacity *= 1 - f * f;
             }
         }
 
-        /// <summary>How long closing takes: the sweep across <paramref name="n"/> slices, or a plain fade.</summary>
         static double CloseLength(int n) { return Math.Max(CloseDur, CloseSlice + CloseStagger * Math.Max(0, n - 1)); }
 
-        /// <summary>The whole wheel: its scale, how far it has faded in (<paramref name="opacity"/>) and, for the hub and dim, out again (<paramref name="fade"/>).</summary>
         void WheelMotion(double now, out double scale, out double opacity, out double fade)
         {
             double o = Clamp01((now - _openStart) / OpenDur);
@@ -864,38 +760,29 @@ namespace Orbit
             opacity = fade = EaseOut(Clamp01((now - _openStart) / 0.12));
             if (_closing || _closeDone)
             {
-                // The slices sweep themselves away; the hub fades over the whole sweep.
                 double p = _closeDone ? 1 : Clamp01((now - _closeStart) / CloseLength(SlotCount));
                 scale *= 1 - 0.08 * p * p;
                 fade *= 1 - p;
             }
         }
 
-        // ----- drawing ------------------------------------------------------------------
-        //
-        // Everything is drawn into layers when it changes (the layout, an icon, what is lit or
-        // edited) and cached on the graphics card. A frame only moves, scales and fades those
-        // layers, so animations run at the display's rate however much there is to draw.
-
         readonly VisualCollection _visuals;
         readonly ContainerVisual _root = new ContainerVisual();
         readonly ScaleTransform _rootScale = new ScaleTransform();
-        readonly DrawingVisual _shade = new DrawingVisual();   // the dim and the area that catches the pointer
-        readonly DrawingVisual _back = new DrawingVisual();    // edit outline, plate, empty ring
+        readonly DrawingVisual _shade = new DrawingVisual();
+        readonly DrawingVisual _back = new DrawingVisual();
         readonly ContainerVisual _slotLayer = new ContainerVisual();
-        readonly DrawingVisual _hub = new DrawingVisual(), _hubLit = new DrawingVisual(); // at rest; lit, faded over it
-        readonly DrawingVisual _ghost = new DrawingVisual();   // the icon under the pointer while dragging a slice
+        readonly DrawingVisual _hub = new DrawingVisual(), _hubLit = new DrawingVisual();
+        readonly DrawingVisual _ghost = new DrawingVisual();
         readonly TranslateTransform _ghostShift = new TranslateTransform();
         SlotVisual[] _slotVisuals = new SlotVisual[0];
 
-        /// <summary>One slice: its glass, icon and name; the lit look faded over it; marks (drop target, remove badge).</summary>
         sealed class SlotVisual
         {
             public readonly ContainerVisual Root = new ContainerVisual();
             public readonly DrawingVisual Body = new DrawingVisual(), Lit = new DrawingVisual(), Marks = new DrawingVisual();
             public readonly ScaleTransform Scale = new ScaleTransform();
             public readonly TranslateTransform Shift = new TranslateTransform();
-            /// <summary>The dial's turn, round the hub: only the cached layers turn, nothing is drawn again.</summary>
             public readonly RotateTransform Turn = new RotateTransform();
 
             public SlotVisual(Point center)
@@ -936,7 +823,6 @@ namespace Orbit
             _visuals.Add(_root);
         }
 
-        /// <summary>Draws every layer again: the layout, the face or an icon changed.</summary>
         void RenderAll()
         {
             Point c = Center;
@@ -946,7 +832,7 @@ namespace Orbit
             RenderShade(c);
             _slotLayer.Children.Clear();
             if (_outgoing != null)
-                foreach (SlotVisual sv in _outgoing) _slotLayer.Children.Add(sv.Root); // still turning away
+                foreach (SlotVisual sv in _outgoing) _slotLayer.Children.Add(sv.Root);
             _slotVisuals = new SlotVisual[n];
             for (int i = 0; i < n; i++)
             {
@@ -958,7 +844,6 @@ namespace Orbit
             ApplyMotion(Now());
         }
 
-        /// <summary>Draws again what depends on the pointer and the mode: marks, the hub, the outline, the drag ghost.</summary>
         void RenderState()
         {
             Point c = Center;
@@ -991,11 +876,8 @@ namespace Orbit
         {
             using (DrawingContext dc = _shade.RenderOpen())
             {
-                // The dim also catches the pointer in the seams: see-through pixels of a
-                // layered window let clicks and drags fall through to the window below.
                 if (_fan)
                 {
-                    // Nothing below the horizon catches the pointer, and the dim fades out just under it.
                     dc.PushClip(new RectangleGeometry(new Rect(0, 0, ViewWidth, c.Y + Gap)));
                     dc.DrawEllipse(HitFill, null, c, _outer + PopOut + 4, _outer + PopOut + 4);
                     dc.Pop();
@@ -1014,7 +896,6 @@ namespace Orbit
             }
         }
 
-        /// <summary>A slice at rest: its glass, icon and name; and, separately, how it looks lit.</summary>
         void RenderSlot(int i, int n)
         {
             AppEntry app = _apps[Global(i)];
@@ -1028,8 +909,6 @@ namespace Orbit
                 dc.DrawGeometry(_sheen, null, g);
                 DrawSlotFace(dc, app, i, n, false);
             }
-            // Lit, the whole slice is drawn again filled with warm light, its name dark: it fades
-            // in while the glass one fades out.
             using (DrawingContext dc = sv.Lit.RenderOpen())
             {
                 Glow.DrawFill(dc, g);
@@ -1037,11 +916,10 @@ namespace Orbit
             }
         }
 
-        /// <summary>A slice's icon and name (and in the wedge style its number key), in white or, lit, in dark ink.</summary>
         void DrawSlotFace(DrawingContext dc, AppEntry app, int i, int n, bool lit)
         {
             Point c = Center, ic = IconCenter(i, n);
-            dc.PushTransform(new RotateTransform(SpokeAngle(i, n), ic.X, ic.Y)); // turned like the name
+            dc.PushTransform(new RotateTransform(SpokeAngle(i, n), ic.X, ic.Y));
             DrawIcon(dc, app, ic, IconSize(n));
             dc.Pop();
             if (_slim) DrawSpokeLabel(dc, app.Name, i, n, lit);
@@ -1051,14 +929,12 @@ namespace Orbit
                 DrawText(dc, app.Name, LabelSize(app.Name, w), FontWeights.Medium, lit ? Glow.InkBrush : White, ic.X, ic.Y + IconSize(n) / 2 + 5, w, 1, !lit);
                 if (n > 1 && i < 9 && !_editMode)
                 {
-                    // The number key that opens this slice.
                     Point np = Polar(c, _outer - 11, SliceMid(i, n));
                     DrawText(dc, (i + 1).ToString(CultureInfo.InvariantCulture), 9, FontWeights.SemiBold, lit ? Glow.InkSoft : Faint, np.X, np.Y - 6.5, 16, 1, false);
                 }
             }
         }
 
-        /// <summary>What marks a slice right now: the accent of a drop target, the edit mode's remove badge.</summary>
         void RenderMarks(int i, int n)
         {
             using (DrawingContext dc = _slotVisuals[i].Marks.RenderOpen())
@@ -1067,7 +943,7 @@ namespace Orbit
                     dc.DrawGeometry(null, _accentPen, _wedges[i]);
                 if (_editMode && i == Active && !_dragging)
                 {
-                    Point b = BadgeCenter(i, n) - PopVector(i, n); // the slice's own shift moves it out with it
+                    Point b = BadgeCenter(i, n) - PopVector(i, n);
                     var badge = new EllipseGeometry(b, 9, 9);
                     if (_removeHot) Glow.DrawFill(dc, badge);
                     else dc.DrawGeometry(_badgeFill, null, badge);
@@ -1078,13 +954,10 @@ namespace Orbit
             }
         }
 
-        /// <summary>A frame: where every layer is and how visible, from the clock and the springs.</summary>
         void ApplyMotion(double now)
         {
             double gs, go, gf;
             WheelMotion(now, out gs, out go, out gf);
-            // Fades go on each cached layer, never on a group: a group's opacity makes the card
-            // flatten the group into a fresh image every frame.
             _rootScale.ScaleX = _rootScale.ScaleY = gs;
             _shade.Opacity = _back.Opacity = gf;
             double hubLit = Clamp01(_hubPop);
@@ -1093,7 +966,6 @@ namespace Orbit
             _ghost.Opacity = 0.85 * gf;
             int n = Math.Min(SlotCount, _slotVisuals.Length);
             double turned = TurnProgress(now), turn = TurnAngle(turned, false);
-            // A full wheel has no hidden half: its faces cross-fade as they turn.
             double turnIn = _fan || !Turning ? 1 : Clamp01(turned), turnOut = _fan ? 1 : Clamp01(1 - turned);
             for (int i = 0; i < n; i++)
             {
@@ -1107,7 +979,6 @@ namespace Orbit
                 Vector off = PopVector(i, n);
                 if (_popV[i] == 0)
                 {
-                    // At rest on whole pixels, so the cached text stays sharp.
                     off = new Vector(Math.Round(off.X), Math.Round(off.Y));
                 }
                 sv.Shift.X = off.X;
@@ -1119,7 +990,6 @@ namespace Orbit
             }
             if (_outgoing != null)
             {
-                // The face turning away: what was popped out settles back as it goes.
                 int on = _outgoing.Length;
                 double away = TurnAngle(turned, true), settle = 1 - EaseOut(Clamp01(turned * 2));
                 for (int i = 0; i < on; i++)
@@ -1133,7 +1003,7 @@ namespace Orbit
                     sv.Turn.Angle = away * 180 / Math.PI;
                     sv.Body.Opacity = opacity * (1 - Clamp01(pop));
                     sv.Lit.Opacity = opacity * Clamp01(pop);
-                    sv.Marks.Opacity = 0; // a drop target or remove badge stays with the face in front
+                    sv.Marks.Opacity = 0;
                 }
             }
             _ghostShift.X = _mouse.X;
@@ -1145,10 +1015,6 @@ namespace Orbit
             }
         }
 
-        /// <summary>
-        /// A slim spoke's name runs along it, between the hub and the icon, turned so that it
-        /// never reads upside down (like the numbers on a dial).
-        /// </summary>
         void DrawSpokeLabel(DrawingContext dc, string name, int i, int n, bool lit)
         {
             double wIn, wOut;
@@ -1183,7 +1049,7 @@ namespace Orbit
         {
             double hr = _inner - Gap;
             Geometry hub = new EllipseGeometry(c, hr, hr);
-            if (_fan) hub = Dome(c, hr, 16); // the time tile: a dome on the horizon, its base corners rounded
+            if (_fan) hub = Dome(c, hr, 16);
             if (hot) Glow.DrawFill(dc, hub);
             else
             {
@@ -1192,8 +1058,6 @@ namespace Orbit
             }
             Brush ink = hot ? Glow.InkBrush : White, inkSoft = hot ? Glow.InkSoft : Soft, inkFaint = hot ? Glow.InkSoft : Faint;
 
-            // The hub is the time tile: hovering a slice leaves the time up (it doesn't show the
-            // slice's name); hovering the hub itself says what a click on it does.
             double w = hr * (_fan ? 1.45 : 1.7);
             string title, sub;
             double titleSize = 14.5;
@@ -1209,7 +1073,6 @@ namespace Orbit
             }
             FormattedText tt = Text(title, titleSize, FontWeights.SemiBold, White, w, 2);
             double block = tt.Height + 4 + 14;
-            // A dome's visual middle sits lower than its circle's centre would.
             double middle = _fan ? c.Y - hr * 0.44 : c.Y;
             double top = middle - block / 2 - (Faces > 1 && !_fan ? 4 : 0);
             DrawText(dc, title, titleSize, FontWeights.SemiBold, ink, c.X, top, w, 2, !hot);
@@ -1218,7 +1081,6 @@ namespace Orbit
             int faces = Faces;
             if (faces > 1)
             {
-                // Which face is up, like a home screen's page dots.
                 int shown = Mod(_face + _queued, faces);
                 double y = _fan ? c.Y - 10 : c.Y + hr * 0.62, x0 = c.X - (faces - 1) * 4.5;
                 for (int f = 0; f < faces; f++)
@@ -1235,7 +1097,6 @@ namespace Orbit
                 dc.DrawImage(img, rect);
                 return;
             }
-            // No icon (yet): a lettered tile in a colour of the name.
             double r = size * 0.26;
             dc.DrawRoundedRectangle(TileBrush(app.Name), _tileRim, rect, r, r);
             string letter = string.IsNullOrEmpty(app.Name) ? "?" : app.Name.Substring(0, 1).ToUpperInvariant();
@@ -1284,7 +1145,6 @@ namespace Orbit
             return ft;
         }
 
-        /// <summary>Text centred on <paramref name="cx"/>: the layout box (not the ink) is what gets centred.</summary>
         void DrawText(DrawingContext dc, string s, double size, FontWeight weight, Brush brush, double cx, double top, double maxWidth, int lines, bool shadow = true)
         {
             if (string.IsNullOrEmpty(s)) return;
@@ -1298,8 +1158,6 @@ namespace Orbit
             f.Freeze();
             return f;
         }
-
-        // ----- input --------------------------------------------------------------------
 
         void Track(DonutHit h)
         {
@@ -1358,7 +1216,6 @@ namespace Orbit
         {
             e.Handled = true;
             if (!IsMouseCaptured) return;
-            // Read the drag before letting go of the mouse: losing capture ends a drag (OnLostMouseCapture).
             DonutHit down = _press;
             bool dragged = _dragging;
             int from = _dragFrom, to = _dropSlot >= 0 ? Global(_dropSlot) : -1;
@@ -1369,7 +1226,6 @@ namespace Orbit
             Point p = e.GetPosition(this);
             if (dragged)
             {
-                // The drop may be on another face (scrolled to while dragging): the app lands right there.
                 if (to >= 0 && to != from && Reordered != null) Reordered(from, to);
                 Track(HitTest(p));
                 Animate();
@@ -1384,7 +1240,7 @@ namespace Orbit
                 case HitKind.Remove: if (RemoveRequested != null) RemoveRequested(Global(up.Slot)); break;
                 case HitKind.Center: if (CenterInvoked != null) CenterInvoked(); break;
                 case HitKind.EmptyRing: if (AddRequested != null) AddRequested(); break;
-                case HitKind.Outside: // between moving slices while the dial turns is no click outside
+                case HitKind.Outside:
                     if (!Turning && DismissRequested != null) DismissRequested();
                     break;
             }
@@ -1428,7 +1284,6 @@ namespace Orbit
             if (newTurn) Flip(e.Delta < 0 ? 1 : -1);
         }
 
-        /// <summary>Keyboard: arrows go round, Enter or 1–9 opens, Tab flips, Esc closes, F2 renames, Delete removes (edit mode).</summary>
         public bool HandleKey(Key key, ModifierKeys modifiers)
         {
             if (_closing) return false;
@@ -1485,8 +1340,6 @@ namespace Orbit
             _hover = -1;
             Animate();
         }
-
-        // ----- external drag and drop -----------------------------------------------------
 
         static string[] DroppedItems(IDataObject data)
         {

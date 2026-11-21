@@ -11,11 +11,6 @@ using Forms = System.Windows.Forms;
 
 namespace Orbit
 {
-    /// <summary>
-    /// Runs in the tray and owns the wheel: brings it up at the cursor (on launch, from the
-    /// hotkey, the tray, or another launch of Orbit), opens what is picked, and keeps the
-    /// settings file in step with edits made on the wheel.
-    /// </summary>
     sealed class OrbitHost
     {
         const int HotkeyId = 0x4F52;
@@ -31,7 +26,6 @@ namespace Orbit
         IntPtr _previous;
         string _hotkey;
         bool _visible, _editMode;
-        /// <summary>Menus and dialogs of the wheel that are open: it stays up while they have the focus.</summary>
         int _holds;
 
         Settings S { get { return _store.Current; } }
@@ -59,7 +53,6 @@ namespace Orbit
             {
                 _holds--;
                 _wheel.View.SetExpanded(-1);
-                // Closed by a click elsewhere: if that took the focus away, the wheel goes too.
                 _wheel.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
                 {
                     if (_holds == 0 && _visible && !_wheel.IsActive && !StaysOpen) Dismiss(false);
@@ -74,7 +67,6 @@ namespace Orbit
             _messages = new HwndSource(parameters);
             _messages.AddHook(WndProc);
             RegisterHotkey();
-            // Told when the screen goes off and on (sleep) and when the charger comes or goes.
             Native.RegisterPowerSettingNotification(_messages.Handle, ref Native.ConsoleDisplayState, 0);
             Native.RegisterPowerSettingNotification(_messages.Handle, ref Native.PowerSource, 0);
             Log.Trace("tray and hotkey");
@@ -89,7 +81,6 @@ namespace Orbit
             if (show) ShowWheel(edit);
         }
 
-        /// <summary>Empty wheels and edit mode don't close when the focus goes elsewhere: files get dragged in from Explorer.</summary>
         bool StaysOpen { get { return _editMode || S.Apps.Count == 0; } }
 
         void ApplySettings()
@@ -100,13 +91,10 @@ namespace Orbit
             Preload();
         }
 
-        /// <summary>Starts every icon loading now, so they are there by the time the wheel shows.</summary>
         void Preload()
         {
             foreach (AppEntry app in S.Apps) _icons.Get(app.IconKey, DonutView.IconPixels);
         }
-
-        // ----- showing and hiding the wheel ---------------------------------------------------
 
         public void ShowWheel(bool edit)
         {
@@ -131,7 +119,6 @@ namespace Orbit
             Log.Trace("wheel shown");
         }
 
-        /// <summary>Opens the wheel where it was put, in the window it is in now.</summary>
         void Present()
         {
             IntPtr hwnd = _wheel.Handle;
@@ -146,23 +133,13 @@ namespace Orbit
             _wheel.AfterShow();
         }
 
-        // ----- keeping the wheel on screen ----------------------------------------------------
-        //
-        // After the laptop woke from sleep, the wheel's (fast, compositor-blended) window now and
-        // then never reached the screen again: invisible, but taking clicks, until Orbit was
-        // restarted. So the wheel gets a new window whenever the screen comes back on or the
-        // charger comes or goes, before anyone opens it; and if it still opens blank
-        // (WheelWindow.Broken), a fresh Orbit opens it again at once.
-
         bool _screenOff, _rebuildPending;
         int _powerSource = -1;
         System.Windows.Threading.DispatcherTimer _settle;
 
-        /// <summary>A window for the wheel: the fast plain one, or (<paramref name="layered"/>) the kind that always drew.</summary>
         WheelWindow NewWheel(DonutView view, bool layered)
         {
             var w = new WheelWindow(view, layered);
-            // Only the window the wheel is in counts: one being replaced says nothing.
             w.Deactivated += delegate { if (w == _wheel && _holds == 0 && !StaysOpen) Dismiss(false); };
             w.OutsideClicked += () =>
             {
@@ -174,23 +151,17 @@ namespace Orbit
             return w;
         }
 
-        /// <summary>Moves the wheel, as it is, to a new window.</summary>
         void RebuildWheel(bool layered)
         {
             WheelWindow old = _wheel;
             DonutView view = old.View;
             old.Release();
             _wheel = NewWheel(view, layered);
-            old.Close(); // after the switch: its losing the focus must not close the wheel
+            old.Close();
             Arrange();
-            new WindowInteropHelper(_wheel).EnsureHandle(); // made now, not when it is needed
+            new WindowInteropHelper(_wheel).EnsureHandle();
         }
 
-        /// <summary>
-        /// The wheel opened blank: a fresh Orbit opens it again (Program.Restart). Moving it to a new
-        /// window in this Orbit brought it back once in two dozen real failures, the layered kind
-        /// never (orbit.log, 27-30 Oct), while a fresh Orbit always did; so it goes straight there.
-        /// </summary>
         void Recover()
         {
             if (DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime < TimeSpan.FromMinutes(1))
@@ -198,7 +169,6 @@ namespace Orbit
             else Program.Restart(Quit);
         }
 
-        /// <summary>The screen or the power changed: the wheel gets a new window once things have settled.</summary>
         void OnPowerSetting(Guid setting, int value)
         {
             Log.Trace("power setting " + (setting == Native.PowerSource ? "power source" : "screen") + " = " + value);
@@ -224,7 +194,7 @@ namespace Orbit
                 _settle.Tick += delegate
                 {
                     _settle.Stop();
-                    if (_visible) _rebuildPending = true; // once it has closed
+                    if (_visible) _rebuildPending = true;
                     else FreshWindow();
                 };
             }
@@ -239,12 +209,11 @@ namespace Orbit
             RebuildWheel(false);
         }
 
-        /// <summary>Puts the hub's centre on the cursor, moved in where the wheel would cross the edge of the screen.</summary>
         void PlaceAt(Native.POINT cursor)
         {
             double scale = _wheel.DeviceScale;
             int width = (int)Math.Round(_wheel.View.ViewWidth * scale), height = (int)Math.Round(_wheel.View.ViewHeight * scale);
-            int slack = (int)Math.Round((DonutView.Rim - 4) * scale); // the shadow margin may hang off the screen
+            int slack = (int)Math.Round((DonutView.Rim - 4) * scale);
             Native.RECT work = Native.WorkAreaAt(cursor);
             Point anchor = _wheel.View.Anchor;
             int x = cursor.X - (int)Math.Round(anchor.X * scale), y = cursor.Y - (int)Math.Round(anchor.Y * scale);
@@ -254,15 +223,8 @@ namespace Orbit
             Arrange();
         }
 
-        /// <summary>The wheel's corner on the screen, in DIPs.</summary>
         Point _wheelPos;
 
-        /// <summary>
-        /// The wheel's window covers the whole screen it is on, so a click anywhere outside the
-        /// wheel only closes it and never reaches the app below (a pixel short of the screen, or
-        /// Windows takes it for a full-screen app). While the wheel stays open for files dragged
-        /// in from other windows (editing, empty), the window is just the wheel.
-        /// </summary>
         void Arrange()
         {
             double scale = _wheel.DeviceScale;
@@ -311,14 +273,11 @@ namespace Orbit
             if (!on && _visible && !_wheel.IsActive && _holds == 0) Dismiss(false);
         }
 
-        // ----- launching ---------------------------------------------------------------------
-
         void Launch(int index, bool admin)
         {
             if (index < 0 || index >= S.Apps.Count) return;
             if (_editMode)
             {
-                // Editing: a click on a slice offers its options instead of opening it.
                 ShowWheelMenu(index);
                 return;
             }
@@ -327,10 +286,6 @@ namespace Orbit
             Launcher.Start(app, admin, error => Balloon("Couldn't open " + app.Name, error));
         }
 
-        /// <summary>
-        /// The folder a middle-click unfolds: the entry's own folder, or for File Explorer the
-        /// Windows drive (C:\). Null for other apps.
-        /// </summary>
         static string FolderOf(AppEntry app)
         {
             string path = Environment.ExpandEnvironmentVariables((app.Path ?? "").Trim());
@@ -361,8 +316,6 @@ namespace Orbit
             Launcher.Start(new AppEntry { Name = Path.GetFileName(folder), Path = folder }, false,
                 error => Balloon("Couldn't open " + folder, error));
         }
-
-        // ----- editing the wheel -------------------------------------------------------------
 
         bool Contains(string path)
         {
@@ -428,7 +381,7 @@ namespace Orbit
         {
             Save();
             _wheel.View.SetApps(S.Apps);
-            if (_visible) Arrange(); // an emptied wheel stays open for files: no cover then
+            if (_visible) Arrange();
             Preload();
         }
 
@@ -459,7 +412,6 @@ namespace Orbit
             _picker.Show();
         }
 
-        /// <summary>Puts a window to the right of the wheel, or to its left when the screen ends there.</summary>
         void PlaceBesideWheel(Window w)
         {
             double scale = _wheel.DeviceScale, side = _wheel.View.ViewWidth, tall = _wheel.View.ViewHeight;
@@ -475,8 +427,6 @@ namespace Orbit
             w.Top = Math.Max(top, Math.Min(y, bottom - w.Height));
         }
 
-        // ----- menus ---------------------------------------------------------------------------
-
         static MenuItem Item(string header, Action action, string gesture = null)
         {
             var item = new MenuItem { Header = header, InputGestureText = gesture ?? "" };
@@ -484,7 +434,6 @@ namespace Orbit
             return item;
         }
 
-        /// <summary>Right-click on a slice (its options) or on the hub (the wheel's).</summary>
         void ShowWheelMenu(int index)
         {
             var menu = new ContextMenu();
@@ -520,7 +469,6 @@ namespace Orbit
             menu.Placement = PlacementMode.MousePoint;
             menu.Closed += delegate
             {
-                // After the menu: if the focus went elsewhere meanwhile, the wheel goes too.
                 _wheel.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
                 {
                     _holds--;
@@ -547,8 +495,6 @@ namespace Orbit
             catch (Exception ex) { Balloon("Couldn't change startup", ex.Message); }
         }
 
-        // ----- tray ----------------------------------------------------------------------------
-
         void CreateTray()
         {
             _tray = new Forms.NotifyIcon { Text = "Orbit", Icon = LoadIcon(), Visible = true };
@@ -568,7 +514,6 @@ namespace Orbit
 
         void ShowTrayMenu()
         {
-            // A WPF menu needs a window of ours in the foreground, or it won't close when clicked away.
             if (_menuAnchor == null)
             {
                 _menuAnchor = new Window
@@ -610,8 +555,6 @@ namespace Orbit
             Log.Write(title + ": " + text);
         }
 
-        // ----- hotkey --------------------------------------------------------------------------
-
         IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             if (msg == Native.WM_HOTKEY && wParam.ToInt32() == HotkeyId)
@@ -621,7 +564,6 @@ namespace Orbit
             }
             else if (msg == Native.WM_POWERBROADCAST && wParam.ToInt32() == Native.PBT_POWERSETTINGCHANGE && lParam != IntPtr.Zero)
             {
-                // POWERBROADCAST_SETTING: the setting's GUID, the data's length, the data (a DWORD here).
                 var setting = (Guid)System.Runtime.InteropServices.Marshal.PtrToStructure(lParam, typeof(Guid));
                 OnPowerSetting(setting, System.Runtime.InteropServices.Marshal.ReadInt32(lParam, 20));
             }
@@ -648,7 +590,6 @@ namespace Orbit
             if (_tray != null) _tray.Text = "Orbit (" + S.Hotkey + ")";
         }
 
-        /// <summary>"Ctrl+Alt+W", "Win+Shift+Space", "Alt+F1"…</summary>
         static bool ParseHotkey(string text, out uint modifiers, out uint vk)
         {
             modifiers = 0;

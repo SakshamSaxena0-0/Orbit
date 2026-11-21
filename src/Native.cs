@@ -3,7 +3,6 @@ using System.Runtime.InteropServices;
 
 namespace Orbit
 {
-    /// <summary>Win32 calls Orbit needs. Coordinates are physical pixels.</summary>
     static class Native
     {
         [StructLayout(LayoutKind.Sequential)]
@@ -44,7 +43,6 @@ namespace Orbit
         public const uint MOD_ALT = 1, MOD_CONTROL = 2, MOD_SHIFT = 4, MOD_WIN = 8, MOD_NOREPEAT = 0x4000;
         public const int ASFW_ANY = -1;
 
-        /// <summary>The whole monitor under a point, taskbar included.</summary>
         public static RECT MonitorAt(POINT pt)
         {
             var info = new MONITORINFO();
@@ -53,7 +51,6 @@ namespace Orbit
             return info.rcMonitor;
         }
 
-        /// <summary>Work area of the monitor under a point (taskbar excluded).</summary>
         public static RECT WorkAreaAt(POINT pt)
         {
             var info = new MONITORINFO();
@@ -62,11 +59,6 @@ namespace Orbit
             return info.rcWork;
         }
 
-        /// <summary>
-        /// Brings a window to the front even when Windows didn't hand Orbit the foreground
-        /// (started by a background process, for one): without the focus the wheel would never
-        /// notice a click elsewhere and stay up.
-        /// </summary>
         public static void ForceForeground(IntPtr hwnd)
         {
             if (SetForegroundWindow(hwnd) && GetForegroundWindow() == hwnd) return;
@@ -89,10 +81,6 @@ namespace Orbit
         const int DWMWA_WINDOW_CORNER_PREFERENCE = 33, DWMWA_BORDER_COLOR = 34;
         const int DWMWCP_DONOTROUND = 1, DWMWA_COLOR_NONE = unchecked((int)0xFFFFFFFE);
 
-        /// <summary>
-        /// Makes a plain (not layered) window see-through by its own alpha: the whole client area
-        /// becomes "frame", which the desktop compositor blends, with no corners or border of its own.
-        /// </summary>
         public static void SeeThroughByCompositor(IntPtr hwnd)
         {
             var source = System.Windows.Interop.HwndSource.FromHwnd(hwnd);
@@ -128,12 +116,9 @@ namespace Orbit
         [DllImport("user32.dll")] public static extern IntPtr RegisterPowerSettingNotification(IntPtr recipient, ref Guid setting, int flags);
 
         public const int WM_POWERBROADCAST = 0x0218, PBT_POWERSETTINGCHANGE = 0x8013;
-        /// <summary>The screen is off (0), on (1) or dimmed (2).</summary>
         public static Guid ConsoleDisplayState = new Guid("6FE69556-704A-47A0-8F24-C28D936FDA47");
-        /// <summary>On the charger (0), on battery (1), on a UPS (2).</summary>
         public static Guid PowerSource = new Guid("5D3E9A59-E9D5-4B00-A6BD-FF34FF516548");
 
-        /// <summary>The screen's pixels in a rectangle as Windows composes them, see-through windows included; null if unreadable.</summary>
         public static int[] CaptureScreen(RECT r)
         {
             int w = r.Right - r.Left, h = r.Bottom - r.Top;
@@ -157,7 +142,6 @@ namespace Orbit
             }
         }
 
-        /// <summary>Keeps a window out of Alt+Tab and the taskbar.</summary>
         public static void MakeToolWindow(IntPtr hwnd)
         {
             SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);

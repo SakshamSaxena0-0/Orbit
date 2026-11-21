@@ -1,7 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Clear dark glass, the same family as the wheel. -->
     <SolidColorBrush x:Key="Panel" Color="#EE16181D"/>
     <SolidColorBrush x:Key="Rim" Color="#38FFFFFF"/>
     <SolidColorBrush x:Key="Ink" Color="#F2FFFFFF"/>
@@ -10,7 +9,6 @@
     <SolidColorBrush x:Key="Press" Color="#2EFFFFFF"/>
     <SolidColorBrush x:Key="Accent" Color="#8AB4FF"/>
     <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
-    <!-- A hovered button fills with warm light and its words turn dark, as on the wheel (Glow.cs). -->
     <LinearGradientBrush x:Key="WarmFill" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="#F2FFD98A" Offset="0"/>
         <GradientStop Color="#F2F7C59F" Offset="0.6"/>
@@ -96,8 +94,6 @@
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
-                <!-- No border. Hovered, the button fills with warm light (with film grain, "Grain" from
-                     Program) and its words turn dark. -->
                 <ControlTemplate TargetType="Button">
                     <Grid>
                         <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="9"/>
